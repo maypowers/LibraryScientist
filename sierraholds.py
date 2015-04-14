@@ -1,14 +1,22 @@
+#!/usr/bin/python2.7
+
 import sys
 
-if (len(sys.argv) <= 1):
-    print "Please specify file."
-    exit()
+## REINSTATE TO USE COMMAND LINE ARGUMENT
+#if (len(sys.argv) <= 1):
+#    print "Please specify file."
+#    exit()
 
 # Length of the label for each line
 LABEL_LENGTH = 18
 
 # rip out page numbers
 PAGE_STRING = "Page "
+
+# detect header
+HEADER_FOUND = -1
+HEADER_STRING = "Outstanding Holds Placed Before "
+timeString = ""
 
 # list of possible labels
 LABELS = {
@@ -56,20 +64,37 @@ def setRowDataFromLine(row, line_label, line_val, last_var_name):
 
 ## MAIN EXECUTION
 # read the file into a list
-file = []
-path = sys.argv[1]
+hold_data = []
+
+## REINSTATE TO USE COMMAND LINE ARGUMENT
+#path = sys.argv[1]
+
+# path of reliable filename
+path = "./mail.google.com"
+
 f = open(path, 'r')
 for line in f:
-    file.append(line)
+    hold_data.append(line)
 
 # store the data in rows for a csv
 rows = []
 row = {}
 last_var_name = ""
 
-for i in range(len(file)):
+# detect report header
+for j in range(len(hold_data)):
+    if hold_data[j].find(HEADER_STRING) != -1:
+        HEADER_FOUND = j
+        break
+
+# save timestamp of report and cut off header
+if HEADER_FOUND != -1:
+    timeString=cleanString(hold_data[HEADER_FOUND+1]).replace(" ","_").replace(":","")
+    hold_data=hold_data[(HEADER_FOUND+5):]
+
+for i in range(len(hold_data)):
     # split the line into its relevant pieces
-    line = file[i]
+    line = hold_data[i]
     line_label = line[:LABEL_LENGTH]
     line_val = line[LABEL_LENGTH:]
 
@@ -85,14 +110,17 @@ for i in range(len(file)):
 # add the final row
 rows.append(row)
 
-# output the csv header
-print '"number","date_placed","not_needed_after","not_needed_before","patron_name","patron_number","patron_email","patron_phone","title","call_num","barcode","location","pickup_location","hold_status","status","hold_note"'
+# prepare output file
+f = open('holds_'+timeString+'.csv','w')
 
-# output the csv body
+# output the csv header to file
+print >> f, '"number","date_placed","not_needed_after","not_needed_before","patron_name","patron_number","patron_email","patron_phone","title","call_num","barcode","location","pickup_location","hold_status","status","hold_note"'
+
+# output the csv body to file
 for row in rows:
     patron_info = row["patron_info"].split("\n")
 
-    print '"%s","%s","%s","%s","%s","%s","%s","%s","%s","%s","%s","%s","%s","%s","%s","%s"' % (
+    print >> f, '"%s","%s","%s","%s","%s","%s","%s","%s","%s","%s","%s","%s","%s","%s","%s","%s"' % (
         row["number"],
         row["date_placed"],
         row["not_needed_after"],
@@ -109,3 +137,5 @@ for row in rows:
         row["hold_status"],
         row["status"],
         row["hold_note"])
+
+f.close()
